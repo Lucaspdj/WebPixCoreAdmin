@@ -1,5 +1,3 @@
-using System;
-
 namespace WebPixCoreAdmin.Models
 {
     public class ErrorViewModel

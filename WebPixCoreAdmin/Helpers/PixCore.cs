@@ -1,13 +1,11 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Server.Kestrel.Transport.Libuv.Internal.Networking;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RestSharp;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading.Tasks;
+using WebPixCoreAdmin.Helpers.Config;
 using WebPixCoreAdmin.Models;
 
 namespace WebPixCoreAdmin.Helpers
@@ -53,34 +51,33 @@ namespace WebPixCoreAdmin.Helpers
         {
             get
             {
-                string url = HttpContext.Current.Request.Url.Host;
-                int porta = HttpContext.Current.Request.Url.Port;
-                string protocolo = HttpContext.Current.Request.Url.Scheme;
-                if (porta != 80)
-                {
-                    DefaultSiteUrl = protocolo + "://" + url + ":" + porta.ToString() + "/";
-                }
-                else
-                {
-                    DefaultSiteUrl = protocolo + "://" + url + "/";
-                }
-                return DefaultSiteUrl;
+                //string url = HttpContext.Current.Request.Url.Host;
+                //int porta = HttpContext.Current.Request.Url.Port;
+                //string protocolo = HttpContext.Current.Request.Url.Scheme;
+                //if (porta != 80)
+                //{
+                //    DefaultSiteUrl = aux
+                //}
+                //else
+                //{
+                //    DefaultSiteUrl = protocolo + "://" + url + "/";
+                //}
+                return AuxCore.GetUrl();
             }
         }
-
-        static IConfiguration _iconfiguration;
+        static IOptions<Configuration> _Configuration;
 
         #endregion
         #region Contructors inferiores
-        public PixCore(IConfiguration iconfiguration)
+        public PixCore(IOptions<Configuration> configs)
         {
-            _iconfiguration = iconfiguration;
+            _Configuration = configs;
         }
         #endregion
-        
+
         public static async Task<int> VerificaUrlClienteAsync(string urlDoCliente)
         {
-            var keyUrlIn = _iconfiguration.GetSection("KeySettings").GetSection("UrlAPIIn").Value;
+            var keyUrlIn = _Configuration.Value.UrlAPI; // _Configuration.UrlAPIIn;
             var urlAPIIn = keyUrlIn + "cliente";
 
             RestClient client = new RestClient(keyUrlIn);
@@ -99,10 +96,10 @@ namespace WebPixCoreAdmin.Helpers
                 return 0;
             }
         }
-        public static async Task RenderUrlPageAsync(HttpContext context)
+        public static async Task RenderUrlPageAsync()
         {
-            
-            var keyUrlIn = _iconfiguration.GetSection("KeySettings").GetSection("UrlAPI").Value;
+
+            var keyUrlIn = _Configuration.Value.UrlAPI;
             var urlAPIIn = keyUrlIn + "Seguranca/Principal/buscarEstilo/" + IDCliente + "/" + 999;
 
             RestClient client = new RestClient(keyUrlIn);
@@ -130,7 +127,7 @@ namespace WebPixCoreAdmin.Helpers
         {
             user.idCliente = IDCliente;
             
-            var keyUrlIn = _iconfiguration.GetSection("KeySettings").GetSection("UrlAPI").Value;
+            var keyUrlIn = _Configuration.Value.UrlAPI;
             var urlAPIIn = keyUrlIn + "Seguranca/Principal/loginUsuario/" + IDCliente + "/" + 999;
 
             RestClient client = new RestClient(keyUrlIn);
@@ -150,7 +147,7 @@ namespace WebPixCoreAdmin.Helpers
                     user.idPerfil = Usuario.PerfilUsuario;
                     user.IdUsuario = Usuario.ID;
 
-                    AuxCore.SetCookieValue(user);
+                    AuxCore.SetCookieValue(user,"UsuarioLogado");
                     return true;
                 }
                 else

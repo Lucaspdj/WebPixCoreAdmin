@@ -1,24 +1,26 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Internal;
-using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using WebPixCoreAdmin.Models;
 
 namespace WebPixCoreAdmin.Helpers
 {
     public class AuxCore
     {
+        #region Contrutores
+        public AuxCore()
+        {
+            ///Logical constructor empty
+        }
 
+
+        #endregion
+
+        #region Controle de Contexto
         private static IHttpContextAccessor IhttpContextAccessor;
         public static void SetHttpContextAccessor(IHttpContextAccessor accessor)
         {
             IhttpContextAccessor = accessor;
         }
-
         public static string GetUrl()
         {
             var HttpContext = IhttpContextAccessor.HttpContext;
@@ -38,41 +40,39 @@ namespace WebPixCoreAdmin.Helpers
             uriBuilder.Query = request.QueryString.ToString();
             return uriBuilder.Uri.AbsoluteUri;
         }
-
         public static void Response301(string defaultSiteUrl)
         {
             var response = IhttpContextAccessor.HttpContext.Response;
             response.Redirect(defaultSiteUrl, true);
         }
-
         public static void Response301(string defaultSiteUrl, string path)
         {
             var response = IhttpContextAccessor.HttpContext.Response;
             response.Redirect(defaultSiteUrl + path, true);
         }
-
-        public static void SetCookieValue(LoginViewModel user)
+        public static void SetCookieValue(Object obj, string nome)
         {
             var current = IhttpContextAccessor.HttpContext;
             string cookievalue;
-            if (current.Request.Cookies["UsuarioLogado"] != null)
+            if (current.Request.Cookies[nome] != null)
             {
-                cookievalue = current.Request.Cookies["UsuarioLogado"].ToString();
+                cookievalue = current.Request.Cookies[nome].ToString();
             }
             else
             {
                 CookieOptions option = new CookieOptions();
                 option.Expires = DateTime.Now.AddMinutes(30);
-                current.Response.Cookies.Append("UsuarioLogado", JsonConvert.SerializeObject(user), option);
+                current.Response.Cookies.Append(nome, JsonConvert.SerializeObject(obj), option);
             }
         }
-
-
-
         public static object GetCookie(string cookie)
         {
             var current = IhttpContextAccessor.HttpContext;
             return current.Request.Cookies[cookie];
         }
+        #endregion
+
+      
+
     }
 }
