@@ -1,8 +1,11 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RestSharp;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using WebPixCoreAdmin.Helpers.Config;
@@ -13,7 +16,12 @@ namespace WebPixCoreAdmin.Helpers
 
     public class PixCore
     {
-        
+        private static IHttpContextAccessor IhttpContextAccessor;
+        public static void SetHttpContextAccessor(IHttpContextAccessor accessor)
+        {
+            IhttpContextAccessor = accessor;
+        }
+
         #region Propiedades
 
         private LoginViewModel usuarioLogado;
@@ -27,18 +35,18 @@ namespace WebPixCoreAdmin.Helpers
         {
             get
             {
+                var HttpContext = IhttpContextAccessor.HttpContext;
                 var urlDoCliente = AuxCore.GetUrl();
                 var DefaultSiteUrl = AuxCore.GetAbsoluteUri();
-                
-                if (AuxCore.GetCookie("IdCliente") != null)
+                if (AuxCore.GetCookie(HttpContext, "IdCliente") != null)
                 {
-                    var cookiesValido = AuxCore.GetCookie("IdCliente");
+                    var cookiesValido = AuxCore.GetCookie(HttpContext, "IdCliente");
                     IdCliente = JsonConvert.DeserializeObject<int>(cookiesValido.ToString());
                     return IdCliente;
                 }
                 else
                 {
-                   AuxCore.Response301(DefaultSiteUrl);
+                    AuxCore.Response301(DefaultSiteUrl);
                     return 0;
                 }
 
@@ -65,24 +73,44 @@ namespace WebPixCoreAdmin.Helpers
                 return AuxCore.GetUrl();
             }
         }
-        static IOptions<Configuration> _Configuration;
+        private static Configuration configuration;
+
+        public static Configuration _configuration
+        {
+
+            get
+            {
+                configuration = GetConfiguration();
+                return configuration;
+            }
+        }
+
+        private static Configuration GetConfiguration()
+        {
+            using (StreamReader r = new StreamReader("MySettings.json"))
+            {
+                string json = r.ReadToEnd();
+
+                var config = JsonConvert.DeserializeObject<Configuration>(json);
+
+                return config;
+            }
+        }
+
 
         #endregion
         #region Contructors inferiores
-        public PixCore(IOptions<Configuration> configs)
-        {
-            _Configuration = configs;
-        }
+
         #endregion
 
         public static async Task<int> VerificaUrlClienteAsync(string urlDoCliente)
         {
-            var keyUrlIn = _Configuration.Value.UrlAPI; // _Configuration.UrlAPIIn;
+            var keyUrlIn = _configuration.UrlAPIIn; // _Configuration.UrlAPIIn;
             var urlAPIIn = keyUrlIn + "cliente";
 
-            RestClient client = new RestClient(keyUrlIn);
+            RestClient client = new RestClient(urlAPIIn);
             RestRequest request = null;
-            request = new RestRequest(urlAPIIn, Method.GET);
+            request = new RestRequest(Method.GET);
             var response = await client.ExecuteTaskAsync(request);
             ClienteViewModel[] Cliente = JsonConvert.DeserializeObject<ClienteViewModel[]>(response.Content);
 
@@ -98,47 +126,94 @@ namespace WebPixCoreAdmin.Helpers
         }
         public static async Task RenderUrlPageAsync()
         {
+            var keyUrl = _configuration.UrlAPI;
+            var urlAPI = keyUrl + "Seguranca/Principal/buscarEstilo/" + IDCliente + "/" + 999;
 
-            var keyUrlIn = _Configuration.Value.UrlAPI;
-            var urlAPIIn = keyUrlIn + "Seguranca/Principal/buscarEstilo/" + IDCliente + "/" + 999;
-
-            RestClient client = new RestClient(keyUrlIn);
+            RestClient client = new RestClient(keyUrl);
             RestRequest request = null;
-            request = new RestRequest(urlAPIIn, Method.GET);
+            request = new RestRequest(Method.GET);
             var response = await client.ExecuteTaskAsync(request);
             PageViewModel[] Cliente = JsonConvert.DeserializeObject<PageViewModel[]>(response.Content);
 
             PageViewModel page = Cliente.Where(y => y.Url == AuxCore.GetUrl()).FirstOrDefault();
             if (page != null)
             {
-                if ( AuxCore.GetAbsoluteUri() != (AuxCore.GetUrl() + "page/index/" + page.ID.ToString()))
+                if (AuxCore.GetAbsoluteUri() != (AuxCore.GetUrl() + "page/index/" + page.ID.ToString()))
                 {
-                    AuxCore.Response301(DefaultSiteUrl, page.ID.ToString());                  
+                    AuxCore.Response301(DefaultSiteUrl, page.ID.ToString());
                 }
             }
             else
             {
                 // HttpContext.Current.Response.StatusCode = 404;
             }
-            
+
+        }
+
+        public static async Task RenderUrlPageAsync(int idCliente, string urlDoCliente, HttpContext context)
+        {
+            int idUsuario = 999;
+
+
+
+
+            var keyUrl = _configuration.UrlAPI;
+            var urlAPI = "Seguranca/Principal/buscarpaginas/" + idCliente + "/" + idUsuario;
+
+
+            RestClient client = new RestClient(keyUrl);
+            RestRequest request = null;
+            request = new RestRequest(urlAPI,Method.GET);
+            var response = await client.ExecuteTaskAsync(request);
+            PageViewModel[] Cliente = JsonConvert.DeserializeObject<PageViewModel[]>(response.Content);
+
+            PageViewModel page = Cliente.Where(x => x.Url == urlDoCliente).FirstOrDefault();
+            if (page != null)
+            {
+                if (urlDoCliente != (urlDoCliente + "page/index/" + page.ID.ToString()))
+                {
+                    // .Response.Status = "301 Moved Permanently";
+                    AuxCore.Response301(DefaultSiteUrl, "page/index/" + page.ID.ToString());
+                    // context.RewritePath("page/index/" + page.ID.ToString(), true);
+                }
+            }
+            else
+            {
+                // HttpContext.Current.Response.StatusCode = 404;
+            }
+
+            //LoginViewModel usuariologado = UsuarioLogado;
+            //if (usuariologado == null || usuariologado.IdUsuario == 0)
+            //{
+
+            //    //Verfica login
+            //    if (usuariologado == null || usuariologado.IdUsuario == 0)
+            //    {
+            //       // HttpContext.Current.Response.Redirect(urlDoCliente + "login/login");
+            //    }
+            //    else
+            //       // HttpContext.Current.Response.Redirect(urlDoCliente);
+
+            //}
+
         }
         //Controle de login deus me ajuda OMG :O
         public static async Task<bool> LoginAsync(LoginViewModel user)
         {
             user.idCliente = IDCliente;
-            
-            var keyUrlIn = _Configuration.Value.UrlAPI;
+            var HttpContext = IhttpContextAccessor.HttpContext;
+            var keyUrlIn = _configuration.UrlAPI;
             var urlAPIIn = keyUrlIn + "Seguranca/Principal/loginUsuario/" + IDCliente + "/" + 999;
 
             RestClient client = new RestClient(keyUrlIn);
             RestRequest request = null;
-            request.AddHeader("ContentType","application /json");
+            request.AddHeader("ContentType", "application /json");
             object envio = new { ObjLogin = user };
             request.AddBody(envio);
             request = new RestRequest(urlAPIIn, Method.POST);
             var response = await client.ExecuteTaskAsync(request);
             UsuarioViewModel Usuario = JsonConvert.DeserializeObject<UsuarioViewModel>(response.Content);
-            
+
             if (Usuario.ID != 0)
             {
                 if (Convert.ToBoolean(Usuario.VAdmin))
@@ -147,7 +222,7 @@ namespace WebPixCoreAdmin.Helpers
                     user.idPerfil = Usuario.PerfilUsuario;
                     user.IdUsuario = Usuario.ID;
 
-                    AuxCore.SetCookieValue(user,"UsuarioLogado");
+                    AuxCore.SetCookieValue(HttpContext, user, "UsuarioLogado");
                     return true;
                 }
                 else
@@ -163,16 +238,24 @@ namespace WebPixCoreAdmin.Helpers
         }
         public static LoginViewModel VerificaLogado()
         {
-            var usuariologado = AuxCore.GetCookie("UsuarioLogado");
-            if (usuariologado != null)
+            try
             {
-                var cookiesValido = usuariologado;
-                LoginViewModel Usuario = JsonConvert.DeserializeObject<LoginViewModel>(cookiesValido.ToString());
-                return Usuario;
+                var HttpContext = IhttpContextAccessor.HttpContext;
+                var usuariologado = AuxCore.GetCookie(HttpContext, "UsuarioLogado");
+                if (usuariologado != null)
+                {
+                    var cookiesValido = usuariologado;
+                    LoginViewModel Usuario = JsonConvert.DeserializeObject<LoginViewModel>(cookiesValido.ToString());
+                    return Usuario;
+                }
+                else
+                {
+                    //current.Response.Redirect("http://localhost:49983/login/login");
+                    return new LoginViewModel();
+                }
             }
-            else
+            catch
             {
-                //current.Response.Redirect("http://localhost:49983/login/login");
                 return new LoginViewModel();
             }
         }

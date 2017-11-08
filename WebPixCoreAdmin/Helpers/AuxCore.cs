@@ -50,25 +50,25 @@ namespace WebPixCoreAdmin.Helpers
             var response = IhttpContextAccessor.HttpContext.Response;
             response.Redirect(defaultSiteUrl + path, true);
         }
-        public static void SetCookieValue(Object obj, string nome)
+        public static void SetCookieValue(HttpContext context,Object obj, string nome)
         {
-            var current = IhttpContextAccessor.HttpContext;
+          
             string cookievalue;
-            if (current.Request.Cookies[nome] != null)
+            if (context.Request.Cookies[nome] != null)
             {
-                cookievalue = current.Request.Cookies[nome].ToString();
+                cookievalue = context.Request.Cookies[nome].ToString();
             }
             else
             {
                 CookieOptions option = new CookieOptions();
                 option.Expires = DateTime.Now.AddMinutes(30);
-                current.Response.Cookies.Append(nome, JsonConvert.SerializeObject(obj), option);
+                context.Response.Cookies.Append(nome, JsonConvert.SerializeObject(obj), option);
             }
         }
-        public static object GetCookie(string cookie)
+        public static object GetCookie(HttpContext context,string cookie)
         {
-            var current = IhttpContextAccessor.HttpContext;
-            return current.Request.Cookies[cookie];
+           // var current = IhttpContextAccessor.HttpContext;
+            return context.Request.Cookies[cookie];
         }
         #endregion
 

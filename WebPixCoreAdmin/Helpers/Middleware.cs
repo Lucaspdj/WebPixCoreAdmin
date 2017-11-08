@@ -27,35 +27,31 @@ namespace WebPixCoreAdmin.Helpers
             string protocolo = context.Request.Scheme;
 
             var urlDoCliente = "";
-
-            if (porta != 80)
-                urlDoCliente = protocolo + "://" + url + ":" + porta.ToString() + "/";
-            else
-                urlDoCliente = protocolo + "://" + url + "/";
+            urlDoCliente = protocolo + "://" + url + "/";
 
             int idCliente = await PixCore.VerificaUrlClienteAsync(urlDoCliente);
             if (idCliente != 0)
             {
                 string cookievalue;
-                if (AuxCore.GetCookie("IdCliente") != null)
+                if (AuxCore.GetCookie(context,"IdCliente") != null)
                 {
-                    cookievalue = AuxCore.GetCookie("IdCliente").ToString();
+                    cookievalue = AuxCore.GetCookie(context,"IdCliente").ToString();
                 }
                 else
                 {
-                    AuxCore.SetCookieValue(idCliente.ToString(), " IdCliente");                   
+                    AuxCore.SetCookieValue(context,idCliente.ToString(), " IdCliente");                   
                 }
-                await PixCore.RenderUrlPageAsync();
+                await PixCore.RenderUrlPageAsync(idCliente, urlDoCliente,context);
             }
             else
             {
                 context.Response.StatusCode = 404;
             }
-
+            
             LoginViewModel usuariologado = PixCore.UsuarioLogado;
             if (usuariologado == null || usuariologado.IdUsuario == 0)
             {
-                if (!AuxCore.GetUrl().Contains("login/login"))
+                if (!urlDoCliente.Contains("login/login"))
                 {
 
                     //Verfica login

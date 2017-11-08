@@ -1,0 +1,4 @@
+﻿{
+  "UrlAPI": "http://localhost:5300/api/",
+  "UrlAPIIn": "http://localhost:5400/api/"
+}
